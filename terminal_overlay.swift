@@ -809,6 +809,134 @@ func printStatus(tty: String) {
     print("  Prod GIF:         \(store.gifs.prod ?? "Built-in Mascot (Red)")")
 }
 
+func addGif(source: String) {
+    let fileManager = FileManager.default
+    let gifsDir = getAppGifsDirectory()
+    
+    if source.lowercased().hasPrefix("http://") || source.lowercased().hasPrefix("https://") {
+        guard let url = URL(string: source) else {
+            print("Error: Invalid URL.")
+            return
+        }
+        
+        let filename = url.lastPathComponent.lowercased().hasSuffix(".gif") ? url.lastPathComponent : "downloaded.gif"
+        let destPath = (gifsDir as NSString).appendingPathComponent(filename)
+        
+        print("Downloading \(url)...")
+        let semaphore = DispatchSemaphore(value: 0)
+        var downloadError: Error? = nil
+        
+        let task = URLSession.shared.downloadTask(with: url) { localURL, response, error in
+            if let error = error {
+                downloadError = error
+            } else if let localURL = localURL {
+                do {
+                    if fileManager.fileExists(atPath: destPath) {
+                        try fileManager.removeItem(atPath: destPath)
+                    }
+                    try fileManager.moveItem(at: localURL, to: URL(fileURLWithPath: destPath))
+                } catch {
+                    downloadError = error
+                }
+            }
+            semaphore.signal()
+        }
+        task.resume()
+        semaphore.wait()
+        
+        if let error = downloadError {
+            print("Error downloading GIF: \(error.localizedDescription)")
+        } else {
+            print("Successfully added GIF: \(filename)")
+            print("Path: \(destPath)")
+        }
+    } else {
+        let sourcePath = (source as NSString).expandingTildeInPath
+        guard fileManager.fileExists(atPath: sourcePath) else {
+            print("Error: Source file does not exist at \(sourcePath)")
+            return
+        }
+        
+        let filename = (sourcePath as NSString).lastPathComponent
+        guard filename.lowercased().hasSuffix(".gif") else {
+            print("Error: Source file must have a .gif extension.")
+            return
+        }
+        
+        let destPath = (gifsDir as NSString).appendingPathComponent(filename)
+        do {
+            if fileManager.fileExists(atPath: destPath) {
+                try fileManager.removeItem(atPath: destPath)
+            }
+            try fileManager.copyItem(atPath: sourcePath, toPath: destPath)
+            print("Successfully added GIF: \(filename)")
+            print("Path: \(destPath)")
+        } catch {
+            print("Error copying GIF: \(error.localizedDescription)")
+        }
+    }
+}
+
+func listGifs() {
+    let gifs = getAvailableGIFs()
+    print("Available GIFs:")
+    for gif in gifs {
+        if gif == "None (Built-in mascot)" {
+            print("  - \(gif) (default)")
+        } else {
+            print("  - \(gif)")
+        }
+    }
+}
+
+func removeGif(name: String) {
+    let fileManager = FileManager.default
+    let gifsDir = getAppGifsDirectory()
+    let filename = name.lowercased().hasSuffix(".gif") ? name : "\(name).gif"
+    let targetPath = (gifsDir as NSString).appendingPathComponent(filename)
+    
+    guard fileManager.fileExists(atPath: targetPath) else {
+        print("Error: GIF '\(filename)' does not exist.")
+        return
+    }
+    
+    do {
+        try fileManager.removeItem(atPath: targetPath)
+        print("Successfully removed GIF: \(filename)")
+    } catch {
+        print("Error removing GIF: \(error.localizedDescription)")
+    }
+}
+
+func handleGifSubcommands(args: [String]) {
+    if args.count < 3 {
+        print("Error: 'gif' command requires actions (add, list, remove).")
+        print("Run 'terminal-overlay help' for usage instructions.")
+        return
+    }
+    
+    let action = args[2]
+    switch action {
+    case "add":
+        if args.count < 4 {
+            print("Error: 'gif add' requires a file path or URL.")
+            return
+        }
+        addGif(source: args[3])
+    case "list":
+        listGifs()
+    case "remove", "delete":
+        if args.count < 4 {
+            print("Error: 'gif remove' requires a GIF name.")
+            return
+        }
+        removeGif(name: args[3])
+    default:
+        print("Unknown gif action: \(action)")
+        print("Available actions: add, list, remove")
+    }
+}
+
 func printUsage() {
     print("""
     Terminal Overlay CLI - Floating Environment Companion
@@ -822,7 +950,13 @@ func printUsage() {
       status             Show current status and configuration settings
       config             Modify configuration settings
       tui                Open the interactive Terminal UI to configure settings
+      gif                Manage custom GIFs (add, list, remove)
       help, -h, --help   Show this usage instructions screen
+      
+    Commands for gif:
+      gif add <path|url> Add a local GIF or download from a URL
+      gif list           List all available custom GIFs
+      gif remove <name>  Delete a custom GIF by name
       
     Options for config (and start):
       --env <name>       Set environment mode: auto (k8s-based), dev, staging, prod
@@ -1208,6 +1342,8 @@ func main() {
     let subcommand = args[1]
     
     switch subcommand {
+    case "gif":
+        handleGifSubcommands(args: args)
     case "start":
         if args.contains("--daemon") {
             let app = NSApplication.shared
