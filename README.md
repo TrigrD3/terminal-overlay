@@ -66,10 +66,14 @@ Commands:
 
 ## 🎨 Customizing GIFs
 
-1. Create a `gifs/` folder inside the workspace.
-2. Drop any `.gif` file into it.
-3. Open `terminal-overlay tui` and navigate to `Dev Env GIF`, `Staging Env GIF`, or `Prod Env GIF`.
-4. Use **◀ / ▶ (Left / Right)** keys to cycle through your custom GIFs and hit **Exit** to save.
+To add and select custom GIFs:
+1. Drop any `.gif` files into the global GIFs directory at `~/.config/terminal-overlay/gifs/`. (On first run, this directory is automatically created and populated with default package GIFs).
+2. Open `terminal-overlay tui` and navigate to `Dev Env GIF`, `Staging Env GIF`, or `Prod Env GIF`.
+3. Use **◀ / ▶ (Left / Right)** keys to cycle through your custom GIFs (they will instantly appear there!) and choose your favorite.
+4. Alternatively, configure a GIF directly via CLI:
+   ```bash
+   terminal-overlay config --dev-gif my-bongo-cat.gif
+   ```
 
 ---
 
