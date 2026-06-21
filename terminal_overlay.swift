@@ -1619,6 +1619,8 @@ func main() {
         } else {
             runTUI(tty: currentTty)
         }
+    case "-v", "--version":
+        print("terminal-overlay 1.0.1")
     case "-h", "--help", "help":
         printUsage()
     default:
