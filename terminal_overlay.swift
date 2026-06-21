@@ -671,6 +671,124 @@ class BuiltInOverlayView: NSView {
     }
 }
 
+// Quick interactive setup wizard when running config without arguments
+func runConfigWizard(tty: String) {
+    print("\n\u{001B}[1;36m👾  Terminal Overlay - Quick Configuration Wizard \u{001B}[0m")
+    print("Welcome! Let's configure your terminal overlay step-by-step.\n")
+    
+    var store = loadConfigStore()
+    var tabConfig = store.tabs[tty] ?? store.tabs["default"] ?? TabConfiguration()
+    
+    // 1. Environment Mode
+    print("\u{001B}[1;33mStep 1: Select Environment Mode\u{001B}[0m")
+    print("  Choose how the overlay detects your environment:")
+    print("    - [auto]    Detect environment automatically based on active Kubernetes context")
+    print("    - [dev]     Lock to Development mode")
+    print("    - [staging] Lock to Staging mode")
+    print("    - [prod]    Lock to Production mode")
+    print("Enter mode (default: \(tabConfig.env)): ", terminator: "")
+    fflush(stdout)
+    if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
+        let lower = input.lowercased()
+        if lower == "auto" || lower == "dev" || lower == "staging" || lower == "prod" {
+            tabConfig.env = lower
+        } else {
+            print("⚠️  Invalid mode. Keeping default: \(tabConfig.env)")
+        }
+    }
+    
+    // 2. K8s context match strings (only if env is auto)
+    if tabConfig.env == "auto" {
+        print("\n\u{001B}[1;33mStep 2: Configure Kubernetes Context Match Substrings\u{001B}[0m")
+        print("  If your active kubectl context contains these strings, the overlay switches environment.")
+        
+        // Dev Match
+        print("  - Dev context match string (default: \(store.k8s.dev)): ", terminator: "")
+        fflush(stdout)
+        if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
+            store.k8s.dev = input
+        }
+        
+        // Staging Match
+        print("  - Staging context match string (default: \(store.k8s.staging)): ", terminator: "")
+        fflush(stdout)
+        if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
+            store.k8s.staging = input
+        }
+        
+        // Prod Match
+        print("  - Prod context match string (default: \(store.k8s.prod)): ", terminator: "")
+        fflush(stdout)
+        if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
+            store.k8s.prod = input
+        }
+    }
+    
+    // 3. Overlay Size
+    print("\n\u{001B}[1;33mStep 3: Configure Overlay Size\u{001B}[0m")
+    print("  Set the size of the overlay window in pixels (50 to 300).")
+    print("Enter size (default: \(Int(tabConfig.size))): ", terminator: "")
+    fflush(stdout)
+    if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
+        if let val = Double(input), val >= 50 && val <= 300 {
+            tabConfig.size = val
+        } else {
+            print("⚠️  Invalid size. Keeping default: \(Int(tabConfig.size))")
+        }
+    }
+    
+    // 4. Custom GIFs
+    print("\n\u{001B}[1;33mStep 4: Configure Environment GIFs\u{001B}[0m")
+    print("  Type 'list' to see available GIFs, or type a GIF filename, or 'none' for default mascot.")
+    
+    let availableGifs = getAvailableGIFs()
+    
+    func askForGif(envName: String, current: String?) -> String? {
+        while true {
+            print("  - GIF for \(envName) (current: \(current != nil ? (current! as NSString).lastPathComponent : "none")): ", terminator: "")
+            fflush(stdout)
+            guard let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                return current
+            }
+            if input.isEmpty {
+                return current
+            }
+            if input.lowercased() == "list" {
+                print("Available GIFs in folder:")
+                for gif in availableGifs {
+                    print("  - \(gif)")
+                }
+                continue
+            }
+            if input.lowercased() == "none" {
+                return nil
+            }
+            if let resolved = resolveGifPath(input) {
+                if FileManager.default.fileExists(atPath: resolved) {
+                    return resolved
+                } else {
+                    print("⚠️  GIF file '\(input)' not found in your gifs directory. Make sure to add it first!")
+                    print("  Do you want to use it anyway? (y/N): ", terminator: "")
+                    fflush(stdout)
+                    if let ans = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), ans == "y" || ans == "yes" {
+                        return resolved
+                    }
+                }
+            }
+        }
+    }
+    
+    store.gifs.dev = askForGif(envName: "Dev", current: store.gifs.dev)
+    store.gifs.staging = askForGif(envName: "Staging", current: store.gifs.staging)
+    store.gifs.prod = askForGif(envName: "Prod", current: store.gifs.prod)
+    
+    // Save
+    store.tabs[tty] = tabConfig
+    saveConfigStore(store)
+    
+    print("\n\u{001B}[1;32m✓ Configuration successfully saved to global settings!\u{001B}[0m")
+}
+
 // Parse config arguments from CLI command
 func parseConfigArgsAndSave(tty: String) {
     var store = loadConfigStore()
@@ -1382,11 +1500,10 @@ func main() {
         printStatus(tty: currentTty)
     case "config":
         if args.count < 3 {
-            print("Error: 'config' command requires options.")
-            printUsage()
-            return
+            runConfigWizard(tty: currentTty)
+        } else {
+            parseConfigArgsAndSave(tty: currentTty)
         }
-        parseConfigArgsAndSave(tty: currentTty)
         printStatus(tty: currentTty)
     case "tui":
         runTUI(tty: currentTty)
