@@ -708,7 +708,7 @@ func printUsage() {
     Terminal Overlay CLI - Floating Environment Companion
     
     Usage:
-      ./terminal_overlay <command> [options]
+      ./terminal-overlay <command> [options]
       
     Commands:
       start              Launch the overlay in the background
@@ -729,11 +729,11 @@ func printUsage() {
       --prod-gif <path>  Set global Prod GIF path (or 'none')
       
     Examples:
-      ./terminal_overlay start --env auto
-      ./terminal_overlay config --size 150
-      ./terminal_overlay config --prod-k8s production-gke-cluster
-      ./terminal_overlay stop
-      ./terminal_overlay tui
+      ./terminal-overlay start --env auto
+      ./terminal-overlay config --size 150
+      ./terminal-overlay config --prod-k8s production-gke-cluster
+      ./terminal-overlay stop
+      ./terminal-overlay tui
     """)
 }
 
