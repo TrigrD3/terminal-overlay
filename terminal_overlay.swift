@@ -1498,7 +1498,7 @@ func main() {
         stopOverlay()
     case "status":
         printStatus(tty: currentTty)
-    case "configure", "config":
+    case "configure":
         if args.count < 3 {
             runConfigWizard(tty: currentTty)
         } else {
