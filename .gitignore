@@ -11,3 +11,10 @@ config.json
 
 # Archive files
 *.tar.gz
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+**/._*
+**/.DS_Store
+
