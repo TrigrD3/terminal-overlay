@@ -1077,6 +1077,96 @@ func handleGifSubcommands(args: [String]) {
     }
 }
 
+func printStartUsage() {
+    print("""
+    Terminal Overlay CLI - Start Subcommand
+    
+    Usage:
+      terminal-overlay start [options]
+      
+    Launches the floating environment overlay. If not locked via options, 
+    the active Kubernetes context dynamically updates the overlay.
+    
+    Options:
+      --env <name>       Set environment mode: auto (k8s-based), dev, staging, prod
+      --size <pixels>    Set overlay size in pixels for current tab (50 to 300)
+      --dev-k8s <match>  K8s context match string for Dev (e.g. minikube)
+      --staging-k8s <m>  K8s context match string for Staging
+      --prod-k8s <match> K8s context match string for Prod
+      --dev-gif <path>   Set global Dev GIF path (or 'none')
+      --staging-gif <p>  Set global Staging GIF path (or 'none')
+      --prod-gif <path>  Set global Prod GIF path (or 'none')
+      
+    Examples:
+      terminal-overlay start
+      terminal-overlay start --env auto
+      terminal-overlay start --env dev --size 150
+    """)
+}
+
+func printStopUsage() {
+    print("""
+    Terminal Overlay CLI - Stop Subcommand
+    
+    Usage:
+      terminal-overlay stop
+      
+    Stops the currently running terminal-overlay background daemon process.
+    """)
+}
+
+func printStatusUsage() {
+    print("""
+    Terminal Overlay CLI - Status Subcommand
+    
+    Usage:
+      terminal-overlay status
+      
+    Shows the current daemon process state (RUNNING or STOPPED), active 
+    tab settings, current K8s context, and environment-to-GIF configurations.
+    """)
+}
+
+func printTuiUsage() {
+    print("""
+    Terminal Overlay CLI - TUI Subcommand
+    
+    Usage:
+      terminal-overlay tui
+      
+    Opens the interactive Terminal UI (TUI) in the current window.
+    Allows adjusting active tab styles, environment modes, cycling GIFs,
+    and toggling the background daemon using keyboard arrow keys.
+    """)
+}
+
+func printConfigureUsage() {
+    print("""
+    Terminal Overlay CLI - Configure Subcommand
+    
+    Usage:
+      terminal-overlay configure [options]
+      
+    If run without options, this command starts the interactive Configuration Wizard.
+    
+    Options:
+      --env <name>       Set environment mode: auto (k8s-based), dev, staging, prod
+      --size <pixels>    Set overlay size in pixels for current tab (50 to 300)
+      --dev-k8s <match>  K8s context match string for Dev (e.g. minikube)
+      --staging-k8s <m>  K8s context match string for Staging
+      --prod-k8s <match> K8s context match string for Prod
+      --dev-gif <path>   Set global Dev GIF path (or 'none')
+      --staging-gif <p>  Set global Staging GIF path (or 'none')
+      --prod-gif <path>  Set global Prod GIF path (or 'none')
+      
+    Examples:
+      terminal-overlay configure
+      terminal-overlay configure --size 150
+      terminal-overlay configure --prod-k8s production-gke-cluster --size 120
+      terminal-overlay configure --dev-gif cat-bongo.gif
+    """)
+}
+
 func printUsage() {
     print("""
     Terminal Overlay CLI - Floating Environment Companion
@@ -1485,7 +1575,9 @@ func main() {
     case "gif":
         handleGifSubcommands(args: args)
     case "start":
-        if args.contains("--daemon") {
+        if args.contains("-h") || args.contains("--help") || args.contains("help") {
+            printStartUsage()
+        } else if args.contains("--daemon") {
             let app = NSApplication.shared
             let delegate = OverlayApplicationDelegate()
             app.delegate = delegate
@@ -1495,18 +1587,33 @@ func main() {
             startOverlayDaemon()
         }
     case "stop":
-        stopOverlay()
+        if args.contains("-h") || args.contains("--help") || args.contains("help") {
+            printStopUsage()
+        } else {
+            stopOverlay()
+        }
     case "status":
-        printStatus(tty: currentTty)
+        if args.contains("-h") || args.contains("--help") || args.contains("help") {
+            printStatusUsage()
+        } else {
+            printStatus(tty: currentTty)
+        }
     case "configure":
-        if args.count < 3 {
+        if args.contains("-h") || args.contains("--help") || args.contains("help") {
+            printConfigureUsage()
+        } else if args.count < 3 {
             runConfigWizard(tty: currentTty)
+            printStatus(tty: currentTty)
         } else {
             parseConfigArgsAndSave(tty: currentTty)
+            printStatus(tty: currentTty)
         }
-        printStatus(tty: currentTty)
     case "tui":
-        runTUI(tty: currentTty)
+        if args.contains("-h") || args.contains("--help") || args.contains("help") {
+            printTuiUsage()
+        } else {
+            runTUI(tty: currentTty)
+        }
     case "-h", "--help", "help":
         printUsage()
     default:
