@@ -829,6 +829,7 @@ func startOverlayDaemon() {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/kill")
         process.arguments = ["-0", String(pid)]
+        process.standardError = FileHandle.nullDevice
         try? process.run()
         process.waitUntilExit()
         if process.terminationStatus == 0 {
@@ -838,7 +839,7 @@ func startOverlayDaemon() {
     }
     
     let process = Process()
-    process.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+    process.executableURL = URL(fileURLWithPath: getExecutablePath())
     process.arguments = ["start", "--daemon"]
     
     do {
@@ -859,6 +860,7 @@ func stopOverlay() {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/kill")
             process.arguments = [String(pid)]
+            process.standardError = FileHandle.nullDevice
             try? process.run()
             process.waitUntilExit()
             print("Stopped terminal overlay (PID \(pid))")
@@ -879,6 +881,7 @@ func printStatus(tty: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/kill")
         process.arguments = ["-0", String(pid)]
+        process.standardError = FileHandle.nullDevice
         try? process.run()
         process.waitUntilExit()
         if process.terminationStatus == 0 {
@@ -1285,6 +1288,7 @@ func renderTUI(selectedIndex: Int, tty: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/kill")
         process.arguments = ["-0", String(pid)]
+        process.standardError = FileHandle.nullDevice
         try? process.run()
         process.waitUntilExit()
         if process.terminationStatus == 0 {
@@ -1526,6 +1530,7 @@ func runTUI(tty: String) {
                     let process = Process()
                     process.executableURL = URL(fileURLWithPath: "/bin/kill")
                     process.arguments = ["-0", String(pid)]
+                    process.standardError = FileHandle.nullDevice
                     try? process.run()
                     process.waitUntilExit()
                     if process.terminationStatus == 0 {
