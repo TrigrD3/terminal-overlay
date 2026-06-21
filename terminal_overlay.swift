@@ -24,8 +24,117 @@ struct ConfigStore: Codable {
     var k8s: K8sMatches = K8sMatches()
 }
 
+func getExecutablePath() -> String {
+    if let path = Bundle.main.executablePath {
+        return path
+    }
+    let arg0 = CommandLine.arguments[0]
+    if arg0.hasPrefix("/") {
+        return arg0
+    }
+    if arg0.contains("/") {
+        return (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent(arg0)
+    }
+    if let pathVar = ProcessInfo.processInfo.environment["PATH"] {
+        let paths = pathVar.components(separatedBy: ":")
+        for p in paths {
+            let fullPath = (p as NSString).appendingPathComponent(arg0)
+            if FileManager.default.isExecutableFile(atPath: fullPath) {
+                return fullPath
+            }
+        }
+    }
+    return arg0
+}
+
+func getAppConfigDirectory() -> String {
+    let homeDir = NSHomeDirectory()
+    let configDir = (homeDir as NSString).appendingPathComponent(".config/terminal-overlay")
+    let fileManager = FileManager.default
+    if !fileManager.fileExists(atPath: configDir) {
+        try? fileManager.createDirectory(atPath: configDir, withIntermediateDirectories: true, attributes: nil)
+    }
+    return configDir
+}
+
+func copyDefaultGifsIfEmpty(targetGifsDir: String) {
+    let fileManager = FileManager.default
+    
+    var hasGifs = false
+    if let files = try? fileManager.contentsOfDirectory(atPath: targetGifsDir) {
+        for file in files {
+            if file.lowercased().hasSuffix(".gif") {
+                hasGifs = true
+                break
+            }
+        }
+    }
+    
+    if hasGifs {
+        return
+    }
+    
+    let exePath = getExecutablePath()
+    let exeDir = (exePath as NSString).deletingLastPathComponent
+    let shareDir = (exeDir as NSString).appendingPathComponent("../share/terminal-overlay/gifs")
+    
+    var sourceGifsDir = shareDir
+    if !fileManager.fileExists(atPath: sourceGifsDir) {
+        sourceGifsDir = "gifs"
+    }
+    
+    guard fileManager.fileExists(atPath: sourceGifsDir) else {
+        return
+    }
+    
+    if let files = try? fileManager.contentsOfDirectory(atPath: sourceGifsDir) {
+        for file in files {
+            if file.lowercased().hasSuffix(".gif") {
+                let sourceFile = (sourceGifsDir as NSString).appendingPathComponent(file)
+                let destFile = (targetGifsDir as NSString).appendingPathComponent(file)
+                if !fileManager.fileExists(atPath: destFile) {
+                    try? fileManager.copyItem(atPath: sourceFile, toPath: destFile)
+                }
+            }
+        }
+    }
+}
+
+func getAppGifsDirectory() -> String {
+    let configDir = getAppConfigDirectory()
+    let gifsDir = (configDir as NSString).appendingPathComponent("gifs")
+    let fileManager = FileManager.default
+    if !fileManager.fileExists(atPath: gifsDir) {
+        try? fileManager.createDirectory(atPath: gifsDir, withIntermediateDirectories: true, attributes: nil)
+    }
+    copyDefaultGifsIfEmpty(targetGifsDir: gifsDir)
+    return gifsDir
+}
+
+func getAppConfigPath() -> String {
+    let configDir = getAppConfigDirectory()
+    return (configDir as NSString).appendingPathComponent("config.json")
+}
+
+func getAppPidPath() -> String {
+    let configDir = getAppConfigDirectory()
+    return (configDir as NSString).appendingPathComponent("terminal_overlay.pid")
+}
+
+func resolveGifPath(_ path: String) -> String? {
+    if path == "none" || path == "null" || path == "" {
+        return nil
+    }
+    let expanded = (path as NSString).expandingTildeInPath
+    if expanded.contains("/") {
+        return expanded
+    } else {
+        return (getAppGifsDirectory() as NSString).appendingPathComponent(expanded)
+    }
+}
+
 func loadConfigStore() -> ConfigStore {
-    let configFile = "config.json"
+    let configFile = getAppConfigPath()
     guard let data = try? Data(contentsOf: URL(fileURLWithPath: configFile)) else {
         return ConfigStore()
     }
@@ -33,7 +142,7 @@ func loadConfigStore() -> ConfigStore {
 }
 
 func saveConfigStore(_ store: ConfigStore) {
-    let configFile = "config.json"
+    let configFile = getAppConfigPath()
     let encoder = JSONEncoder()
     encoder.outputFormatting = .prettyPrinted
     if let data = try? encoder.encode(store) {
@@ -50,7 +159,7 @@ func getCurrentTTY() -> String {
 }
 
 func getAvailableGIFs() -> [String] {
-    let gifsDir = "gifs"
+    let gifsDir = getAppGifsDirectory()
     var list = ["None (Built-in mascot)"]
     let fileManager = FileManager.default
     if let files = try? fileManager.contentsOfDirectory(atPath: gifsDir) {
@@ -255,7 +364,7 @@ class OverlayApplicationDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
-        let configFile = "config.json"
+        let configFile = getAppConfigPath()
         if let attributes = try? FileManager.default.attributesOfItem(atPath: configFile),
            let modificationDate = attributes[.modificationDate] as? Date {
             if lastFileModificationDate == nil || modificationDate > lastFileModificationDate! {
@@ -576,14 +685,11 @@ func parseConfigArgsAndSave(tty: String) {
                 tabConfig.size = val
             }
         } else if args[i] == "--dev-gif" && i + 1 < args.count {
-            let path = args[i+1]
-            store.gifs.dev = (path == "none" || path == "null" || path == "") ? nil : (path as NSString).expandingTildeInPath
+            store.gifs.dev = resolveGifPath(args[i+1])
         } else if args[i] == "--staging-gif" && i + 1 < args.count {
-            let path = args[i+1]
-            store.gifs.staging = (path == "none" || path == "null" || path == "") ? nil : (path as NSString).expandingTildeInPath
+            store.gifs.staging = resolveGifPath(args[i+1])
         } else if args[i] == "--prod-gif" && i + 1 < args.count {
-            let path = args[i+1]
-            store.gifs.prod = (path == "none" || path == "null" || path == "") ? nil : (path as NSString).expandingTildeInPath
+            store.gifs.prod = resolveGifPath(args[i+1])
         } else if args[i] == "--dev-k8s" && i + 1 < args.count {
             store.k8s.dev = args[i+1]
         } else if args[i] == "--staging-k8s" && i + 1 < args.count {
@@ -598,7 +704,7 @@ func parseConfigArgsAndSave(tty: String) {
 }
 
 func startOverlayDaemon() {
-    let pidFile = "terminal_overlay.pid"
+    let pidFile = getAppPidPath()
     if FileManager.default.fileExists(atPath: pidFile),
        let pidString = try? String(contentsOfFile: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
        let pid = Int32(pidString) {
@@ -628,7 +734,7 @@ func startOverlayDaemon() {
 }
 
 func stopOverlay() {
-    let pidFile = "terminal_overlay.pid"
+    let pidFile = getAppPidPath()
     if FileManager.default.fileExists(atPath: pidFile) {
         if let pidString = try? String(contentsOfFile: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
            let pid = Int32(pidString) {
@@ -646,7 +752,7 @@ func stopOverlay() {
 }
 
 func printStatus(tty: String) {
-    let pidFile = "terminal_overlay.pid"
+    let pidFile = getAppPidPath()
     var isRunning = false
     var pidVal: Int32 = 0
     if FileManager.default.fileExists(atPath: pidFile),
@@ -806,7 +912,7 @@ func renderTUI(selectedIndex: Int, tty: String) {
     let store = loadConfigStore()
     let tabConfig = store.tabs[tty] ?? store.tabs["default"] ?? TabConfiguration()
     
-    let pidFile = "terminal_overlay.pid"
+    let pidFile = getAppPidPath()
     var isRunning = false
     var pidVal: Int32 = 0
     if FileManager.default.fileExists(atPath: pidFile),
@@ -960,7 +1066,7 @@ func cycleGIF(currentPath: String?, direction: Int) -> String? {
     if nextIdx == 0 {
         return nil
     } else {
-        return "gifs/\(gifsList[nextIdx])"
+        return (getAppGifsDirectory() as NSString).appendingPathComponent(gifsList[nextIdx])
     }
 }
 
@@ -1049,7 +1155,7 @@ func runTUI(tty: String) {
                 _ = enableRawMode(tty: STDIN_FILENO)
             } else if selectedIndex == 8 {
                 var isRunning = false
-                let pidFile = "terminal_overlay.pid"
+                let pidFile = getAppPidPath()
                 if FileManager.default.fileExists(atPath: pidFile),
                    let pidString = try? String(contentsOfFile: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
                    let pid = Int32(pidString) {
