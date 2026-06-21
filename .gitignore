@@ -1,6 +1,7 @@
 # Compiled Binaries
 terminal_overlay
 terminal_pet
+terminal-overlay
 
 # Process ID files
 *.pid
