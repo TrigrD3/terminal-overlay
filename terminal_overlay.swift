@@ -908,10 +908,30 @@ func removeGif(name: String) {
     }
 }
 
+func printGifUsage() {
+    print("""
+    Terminal Overlay CLI - GIF Management
+    
+    Usage:
+      terminal-overlay gif <action> [options]
+      
+    Actions:
+      add <path|url>   Add a local GIF or download from a URL
+      list             List all available custom GIFs
+      remove <name>    Delete a custom GIF by name
+      help, -h, --help Show this help usage message
+      
+    Examples:
+      terminal-overlay gif add ~/Downloads/party-parrot.gif
+      terminal-overlay gif add https://example.com/bongo-cat.gif
+      terminal-overlay gif list
+      terminal-overlay gif remove party-parrot.gif
+    """)
+}
+
 func handleGifSubcommands(args: [String]) {
     if args.count < 3 {
-        print("Error: 'gif' command requires actions (add, list, remove).")
-        print("Run 'terminal-overlay help' for usage instructions.")
+        printGifUsage()
         return
     }
     
@@ -931,9 +951,11 @@ func handleGifSubcommands(args: [String]) {
             return
         }
         removeGif(name: args[3])
+    case "help", "-h", "--help":
+        printGifUsage()
     default:
         print("Unknown gif action: \(action)")
-        print("Available actions: add, list, remove")
+        print("Available actions: add, list, remove, help")
     }
 }
 
