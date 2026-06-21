@@ -57,9 +57,13 @@ Commands:
   ```bash
   terminal-overlay status
   ```
-* **Manually set size & cluster matches:**
+* **Start the interactive configuration wizard:**
   ```bash
-  terminal-overlay config --size 140 --prod-k8s production-gke-cluster
+  terminal-overlay configure
+  ```
+* **Manually set size & cluster matches via flags:**
+  ```bash
+  terminal-overlay configure --size 140 --prod-k8s production-gke-cluster
   ```
 
 ---
@@ -86,10 +90,10 @@ To add and select custom GIFs:
    ```
 4. **Choose/Select the GIF**:
    - Open `terminal-overlay tui` and navigate to `Dev Env GIF`, `Staging Env GIF`, or `Prod Env GIF`. Use **◀ / ▶ (Left / Right)** keys to cycle and choose your GIF.
-   - Alternatively, select it directly via CLI:
-     ```bash
-     terminal-overlay config --dev-gif bongo-cat.gif
-     ```
+    - Alternatively, select it directly via CLI:
+      ```bash
+      terminal-overlay configure --dev-gif bongo-cat.gif
+      ```
 
 ---
 

@@ -703,21 +703,21 @@ func runConfigWizard(tty: String) {
         print("  If your active kubectl context contains these strings, the overlay switches environment.")
         
         // Dev Match
-        print("  - Dev context match string (default: \(store.k8s.dev)): ", terminator: "")
+        print("  - Dev context match string (current: \(store.k8s.dev)): ", terminator: "")
         fflush(stdout)
         if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
             store.k8s.dev = input
         }
         
         // Staging Match
-        print("  - Staging context match string (default: \(store.k8s.staging)): ", terminator: "")
+        print("  - Staging context match string (current: \(store.k8s.staging)): ", terminator: "")
         fflush(stdout)
         if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
             store.k8s.staging = input
         }
         
         // Prod Match
-        print("  - Prod context match string (default: \(store.k8s.prod)): ", terminator: "")
+        print("  - Prod context match string (current: \(store.k8s.prod)): ", terminator: "")
         fflush(stdout)
         if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
             store.k8s.prod = input
@@ -727,7 +727,7 @@ func runConfigWizard(tty: String) {
     // 3. Overlay Size
     print("\n\u{001B}[1;33mStep 3: Configure Overlay Size\u{001B}[0m")
     print("  Set the size of the overlay window in pixels (50 to 300).")
-    print("Enter size (default: \(Int(tabConfig.size))): ", terminator: "")
+    print("Enter size (current: \(Int(tabConfig.size))): ", terminator: "")
     fflush(stdout)
     if let input = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines), !input.isEmpty {
         if let val = Double(input), val >= 50 && val <= 300 {
@@ -1088,7 +1088,7 @@ func printUsage() {
       start              Launch the overlay in the background
       stop               Stop the running overlay
       status             Show current status and configuration settings
-      config             Modify configuration settings
+      configure          Modify configuration settings (interactive wizard if no options)
       tui                Open the interactive Terminal UI to configure settings
       gif                Manage custom GIFs (add, list, remove)
       help, -h, --help   Show this usage instructions screen
@@ -1098,7 +1098,7 @@ func printUsage() {
       gif list           List all available custom GIFs
       gif remove <name>  Delete a custom GIF by name
       
-    Options for config (and start):
+    Options for configure (and start):
       --env <name>       Set environment mode: auto (k8s-based), dev, staging, prod
       --size <pixels>    Set overlay size for current tab
       --dev-k8s <match>  K8s context match string for Dev (e.g. minikube)
@@ -1110,8 +1110,8 @@ func printUsage() {
       
     Examples:
       terminal-overlay start --env auto
-      terminal-overlay config --size 150
-      terminal-overlay config --prod-k8s production-gke-cluster
+      terminal-overlay configure --size 150
+      terminal-overlay configure --prod-k8s production-gke-cluster
       terminal-overlay stop
       terminal-overlay tui
     """)
@@ -1498,7 +1498,7 @@ func main() {
         stopOverlay()
     case "status":
         printStatus(tty: currentTty)
-    case "config":
+    case "configure", "config":
         if args.count < 3 {
             runConfigWizard(tty: currentTty)
         } else {
