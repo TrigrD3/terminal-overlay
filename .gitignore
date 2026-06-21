@@ -1,0 +1,12 @@
+# Compiled Binaries
+terminal_overlay
+terminal_pet
+
+# Process ID files
+*.pid
+
+# Configurations
+config.json
+
+# Archive files
+*.tar.gz
